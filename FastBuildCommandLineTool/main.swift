@@ -102,24 +102,28 @@ func main() {
     // compare old/new file hash
     var dateChangeCmds: [String] = []
     oldIndex.allFiles.forEach { old in
-        if let new = newIndex.get(old.path),
-           new.fileHash != nil,
-           old.fileHash != nil,
-           new.fileHash == old.fileHash,
-           new.modificationDate.accurateToSecond != old.modificationDate.accurateToSecond || new.creationDate.accurateToSecond != old.creationDate.accurateToSecond
-        {
-            do {
-                var attrs = try localFileManager.attributesOfItem(atPath: old.path)
-                attrs[.modificationDate] = old.modificationDate
-                attrs[.creationDate] = old.creationDate
-                try localFileManager.setAttributes(attrs, ofItemAtPath: old.path)
-            } catch {
-                // avoid file write permission issue
-                dateChangeCmds.append("setfile -d '\(cmdDateFormat.string(from: old.creationDate))' '\(old.path)'")
-                dateChangeCmds.append("setfile -m '\(cmdDateFormat.string(from: old.modificationDate))' '\(old.path)'")
+        if let new = newIndex.get(old.path), new.modificationDate.accurateToSecond != old.modificationDate.accurateToSecond || new.creationDate.accurateToSecond != old.creationDate.accurateToSecond {
+            func modify() {
+                do {
+                    var attrs = try localFileManager.attributesOfItem(atPath: old.path)
+                    attrs[.modificationDate] = old.modificationDate
+                    attrs[.creationDate] = old.creationDate
+                    try localFileManager.setAttributes(attrs, ofItemAtPath: old.path)
+                } catch {
+                    // avoid file write permission issue
+                    dateChangeCmds.append("setfile -d '\(cmdDateFormat.string(from: old.creationDate))' '\(old.path)'")
+                    dateChangeCmds.append("setfile -m '\(cmdDateFormat.string(from: old.modificationDate))' '\(old.path)'")
+                }
+                new.modificationDate = old.modificationDate
+                new.creationDate = old.creationDate
             }
-            new.modificationDate = old.modificationDate
-            new.creationDate = old.creationDate
+
+            if new.isDirectory, new.gitHash != nil, new.gitHash == old.gitHash {
+                modify()
+            }
+            if !new.isDirectory, new.fileHash != nil, new.fileHash == old.fileHash {
+                modify()
+            }
         }
     }
     while !dateChangeCmds.isEmpty {
