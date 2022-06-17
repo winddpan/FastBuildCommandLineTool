@@ -48,6 +48,15 @@ func main() {
     }
 
     let localFileManager = FileManager()
+
+    // remove .DS_Store
+    for case let fileURL as URL in localFileManager.enumerator(at: URL(fileURLWithPath: rootDir), includingPropertiesForKeys: [], options: [])! {
+        if fileURL.lastPathComponent == ".DS_Store" {
+            try? localFileManager.removeItem(at: fileURL)
+        }
+    }
+
+    // scan file data
     let resourceKeys = Set<URLResourceKey>([.isDirectoryKey, .contentModificationDateKey, .creationDateKey, .isSymbolicLinkKey])
     let directoryEnumerator = localFileManager.enumerator(at: URL(fileURLWithPath: rootDir), includingPropertiesForKeys: Array(resourceKeys), options: .skipsHiddenFiles)!
     for case let fileURL as URL in directoryEnumerator {
